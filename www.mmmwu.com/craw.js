@@ -52,6 +52,7 @@ var imageScema = new Schema({
 var imageModel = mongoose.model("image", imageScema);
 
 lineReader.on("line", function(line){
+    lineReader.pause();
     var info = JSON.parse(line);
 
     var id = uuid.v4();
@@ -93,6 +94,7 @@ lineReader.on("line", function(line){
             var file = fs.createWriteStream(filePath);
             var request = http.get(doc.img_url, function(response){
                 response.pipe(file);
+                lineReader.resume();
             });
         }
     });
