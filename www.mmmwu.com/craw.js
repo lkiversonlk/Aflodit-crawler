@@ -6,10 +6,6 @@ var mongoose = require("mongoose");
 var fs = require("fs");
 var http = require("http");
 var path = require("path");
-
-var lineReader = require("readline").createInterface({
-    input : fs.createReadStream("./pic_one.source")
-});
 var uuid = require("node-uuid");
 
 try{
@@ -19,7 +15,6 @@ try{
 }catch (error){
     console.log("error parsing configuration", error);
     process.exit(-1);
-
 }
 
 
@@ -51,10 +46,19 @@ var imageScema = new Schema({
 
 var imageModel = mongoose.model("image", imageScema);
 
-lineReader.on("line", function(line){
-    lineReader.pause();
-    var info = JSON.parse(line);
+var reader = fs.createReadStream("./pic_one.source");
 
+var fd = fs.openSync("./pic_one.source", "r");
+var bufferSize = 1024;
+var buffer = new Buffer(bufferSize);
+
+var left = "";
+
+getLine(fd);
+
+function processline(line, callback){
+    var info = JSON.parse(line);
+    console.log(line);
     var id = uuid.v4();
 
     /**
@@ -93,15 +97,42 @@ lineReader.on("line", function(line){
 
             var file = fs.createWriteStream(filePath);
             var request = http.get(doc.img_url, function(response){
-                response.pipe(file);
-                response.on('end', function(){
-                    setTimeout(function(){
-                        lineReader.resume();
-                    }, 3000);
+                response.on('data', function(data){
+                    file.write(data);
                 });
+                response.on("end", function(){
+                    file.end();
+                    callback(null);
+                })
             });
         }
     });
-});
+}
 
 
+
+
+function getLine(fd){
+
+    var read;
+    read = fs.readSync(fd, buffer, 0, bufferSize, null);
+    if(read !== 0) {
+        left += buffer.toString('utf-8', 0, read);
+        var end;
+
+        function getNextline(){
+            end = left.indexOf("\n");
+            if(end !== -1){
+                processline(left.substring(0, end), function(){
+                    left = left.substring(end + 1);
+                    getNextline();
+                });
+            }else{
+                getLine(fd);
+            }
+        }
+        getNextline();
+    }else{
+        processline(left, function(){});
+    }
+}
