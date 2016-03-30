@@ -94,7 +94,11 @@ lineReader.on("line", function(line){
             var file = fs.createWriteStream(filePath);
             var request = http.get(doc.img_url, function(response){
                 response.pipe(file);
-                lineReader.resume();
+                response.on('end', function(){
+                    setTimeout(function(){
+                        lineReader.resume();
+                    }, 3000);
+                });
             });
         }
     });
