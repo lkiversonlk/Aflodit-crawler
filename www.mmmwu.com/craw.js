@@ -61,6 +61,53 @@ function processline(line, callback){
     console.log(line);
     var id = uuid.v4();
 
+    imageModel.find({img_url : info.result.pic}).exec(function(error, docs){
+        if(error){
+            callback();
+        }else{
+            if(!docs || docs.length == 0){
+                var data = new imageModel({
+                    file_name : info.result.title,
+                    get_time : parseInt(info.updatetime),
+                    file_id : id,
+                    status : 0,
+                    img_url : info.result.pic,
+                    web_info : info.result.kind,
+                    page_url : info.result.url
+                });
+
+                data.save(function(err, doc){
+                    if(err){
+                        console.log(err);
+                    }else{
+                        console.log("processing " + doc.img_url);
+                        //get the image from web
+                        var filePath = path.join(configuration.folder, id.substr(0,2), id);
+                        var dir = path.dirname(filePath);
+                        try{
+                            fs.mkdirSync(dir);
+                        }catch (error){
+
+                        }
+
+                        var file = fs.createWriteStream(filePath);
+                        var request = http.get(doc.img_url, function(response){
+                            response.on('data', function(data){
+                                file.write(data);
+                            });
+                            response.on("end", function(){
+                                file.end();
+                                callback(null);
+                            })
+                        });
+                    }
+                });
+            }else{
+                console.log("already exists");
+                callback();
+            }
+        }
+    });
     /**
      * url : image url
      * updatetime : long
@@ -71,42 +118,7 @@ function processline(line, callback){
      *    pic : image_url
      * }
      */
-    var data = new imageModel({
-        file_name : info.result.title,
-        get_time : parseInt(info.updatetime),
-        file_id : id,
-        status : 0,
-        img_url : info.result.pic,
-        web_info : info.result.kind,
-        page_url : info.result.url
-    });
 
-    data.save(function(err, doc){
-        if(err){
-            console.log(err);
-        }else{
-            console.log("processing " + doc.img_url);
-            //get the image from web
-            var filePath = path.join(configuration.folder, id.substr(0,2), id);
-            var dir = path.dirname(filePath);
-            try{
-                fs.mkdirSync(dir);
-            }catch (error){
-
-            }
-
-            var file = fs.createWriteStream(filePath);
-            var request = http.get(doc.img_url, function(response){
-                response.on('data', function(data){
-                    file.write(data);
-                });
-                response.on("end", function(){
-                    file.end();
-                    callback(null);
-                })
-            });
-        }
-    });
 }
 
 
