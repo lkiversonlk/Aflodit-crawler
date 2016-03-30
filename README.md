@@ -38,6 +38,9 @@
 
     假设配置指定目录是/mydata/image, 图片uuid为8d155ef5-c9ee-4ec8-964d-617c7fffd132, 则最后图片存储为/mydata/image/8d/8d155ef5-c9ee-4ec8-964d-617c7fffd132。
     
+#### 代码上传规范
+请以url作为文件夹名称将爬虫添加到项目内，例如爬取www.test.com/pic/people路径的，请上传到www.test.com/pic/people路径内，同时请在执行目录下贴上run.sh脚本，方便自动执行爬虫。
+
 #### 附表
 
 1. 图片status字段对应表
