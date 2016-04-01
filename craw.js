@@ -77,11 +77,12 @@ function processline(line, callback){
         }else{
             if(!docs || docs.length == 0){
                 var data = new imageModel({
+                    file_name : info.result.title,
                     get_time : parseInt(info.updatetime),
                     file_id : id,
                     status : 0,
                     img_url : info.result.pic_src,
-                    web_info : info.result.pic_alt,
+                    web_info : info.result.kind,
                     page_url : info.result.url
                 });
 
