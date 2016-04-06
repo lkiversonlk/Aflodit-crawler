@@ -143,6 +143,9 @@ function processline(line, callback){
                                     });
                             })
                         });
+                        request.on("error", function(error){
+                            console.log("connection error " + error);
+                        });
                     } else {
                         console.log("already exists");
                         return callback();
