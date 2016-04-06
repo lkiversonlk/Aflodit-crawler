@@ -71,7 +71,7 @@ function processline(line, callback){
     console.log(line);
     var id = uuid.v4();
 
-    imageModel.find({img_url : info.result.pic_src}).exec(function(error, docs){
+    imageModel.find({img_url : info.result.img_title}).exec(function(error, docs){
         if(error){
             callback();
         }else{
