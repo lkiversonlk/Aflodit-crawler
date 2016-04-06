@@ -130,9 +130,9 @@ function processline(line, callback){
                                                     return callback(err);
                                                 } else {
                                                     console.log("processing " + doc.img_url);
-                                                    setTimeout(2000, function(){
+                                                    setTimeout(function(){
                                                         return callback();
-                                                    });
+                                                    }, 2000);
 
                                                 }
                                             });
