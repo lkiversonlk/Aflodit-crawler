@@ -89,44 +89,48 @@ function processline(line, callback){
             callback();
         }else{
             if(!docs || docs.length == 0){
-                var data = new imageModel({
-                    file_name : info.result.img_title,
-                    file_id : id,
-                    status : 0,
-                    img_url : info.result.img_url,
-                    web_info : info.result.kind,
-                    page_url : info.result.page_url
-                });
+                var filePath = path.join(configuration.folder, id.substr(0,2), id);
+                var dir = path.dirname(filePath);
+                try{
+                    fs.mkdirSync(dir);
+                }catch (error){
 
+                }
 
-                data.save(function(err, doc){
-                    if(err){
-                        console.log(err);
-                    }else{
-                        console.log("processing " + doc.img_url);
-                        //get the image from web
-                        var filePath = path.join(configuration.folder, id.substr(0,2), id);
-                        var dir = path.dirname(filePath);
-                        try{
-                            fs.mkdirSync(dir);
-                        }catch (error){
-
-                        }
-
-                        var file = fs.createWriteStream(filePath);
-                        var request = http.get(doc.img_url, function(response){
-                            response.on('data', function(data){
-                                file.write(data);
-                            });
-                            response.on("end", function(){
-                                file.end();
-                                callback(null);
-                            })
+                var file = fs.createWriteStream(filePath);
+                var request = http.get(info.result.img_url, function(response){
+                    response.on('data', function(data){
+                        file.write(data);
+                    });
+                    response.on("end", function(){
+                        file.end();
+                        var data = new imageModel({
+                            file_name : info.result.img_title,
+                            file_id : id,
+                            status : 0,
+                            img_url : info.result.img_url,
+                            web_info : info.result.kind,
+                            page_url : info.result.page_url
                         });
-                    }
+
+
+                        data.save(function(err, doc){
+                            if(err){
+                                console.log(err);
+                            }else{
+                                console.log("processing " + doc.img_url);
+                                //get the image from web
+                                return callback(null);
+                            }
+                        });
+                    })
                 });
+                request.on("error", function(error){
+                    console.log(error);
+                    return callback();
+                })
             }else{
-                console.log("already exists");
+                console.log(info.result.img_title + " 已经存在了");
                 callback();
             }
         }
