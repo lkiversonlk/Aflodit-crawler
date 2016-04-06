@@ -22,8 +22,7 @@ if(argv.length != 3){
 try{
     var configPath = path.join(process.env.HOME, ".aflodit.json");
     var configuration = require(configPath);
-    var connectString = configuration.mongo.mongourl + "/" + configuration.mongo.db
-    mongoose.connect(connectString);
+    mongoose.connect(configuration.mongo.mongourl + "/" + configuration.mongo.db);
 }catch (error){
     console.log("error parsing configuration", error);
     process.exit(-1);
@@ -59,18 +58,19 @@ var imageScema = new Schema({
 var imageModel = mongoose.model("image", imageScema);
 
 
-var finish = false;
-var newLine = true;
-
 var fd = fs.openSync(path.resolve(argv[2]), "r");
+
 var bufferSize = 1024;
 var buffer = new Buffer(bufferSize);
 
 var left = "";
 
+getLine(fd);
+
 function processline(line, callback){
     var info = JSON.parse(line);
     var id = uuid.v4();
+
     var title = info.result.img_title;
     var result = ["女", "美", "性感", "胸", "腿", "诱惑"].filter(function(key){
         if(title.indexOf(key) != -1){
@@ -79,104 +79,95 @@ function processline(line, callback){
         return false;
     });
 
-    if(result.length > 0){
-        //console.log("aapprove title " + title);
-        imageModel.find(
-            {img_url : info.result.img_url},
-            function (error, docs) {
-                if (error) {
-                    return callback();
-                } else {
-                    if (!docs || docs.length == 0) {
-                        //not existed
+    if(result.length == 0){
+        console.log("jump " + info.result.img_title);
+        return callback();
+    }
+
+    imageModel.find({img_url : info.result.img_url}).exec(function(error, docs){
+        if(error){
+            callback();
+        }else{
+            if(!docs || docs.length == 0){
+                var data = new imageModel({
+                    file_name : info.result.img_title,
+                    file_id : id,
+                    status : 0,
+                    img_url : info.result.img_url,
+                    web_info : info.result.kind,
+                    page_url : info.result.page_url
+                });
+
+
+                data.save(function(err, doc){
+                    if(err){
+                        console.log(err);
+                    }else{
+                        console.log("processing " + doc.img_url);
                         //get the image from web
-                        var filePath = path.join(configuration.folder, id.substr(0, 2), id);
+                        var filePath = path.join(configuration.folder, id.substr(0,2), id);
                         var dir = path.dirname(filePath);
-                        try {
+                        try{
                             fs.mkdirSync(dir);
-                        } catch (error) {
+                        }catch (error){
 
                         }
 
                         var file = fs.createWriteStream(filePath);
-                        var request = http.get(info.result.img_url, function (response) {
-                            response.on('data', function (data) {
+                        var request = http.get(doc.img_url, function(response){
+                            response.on('data', function(data){
                                 file.write(data);
                             });
-                            response.on("end", function () {
+                            response.on("end", function(){
                                 file.end();
-                                //check if the file is valid
-                                easyimg.info(filePath)
-                                    .then(function (picInfo) {
-                                        var wDh = picInfo.width / picInfo.height;
-                                        if (wDh > 1) {
-                                            //file size invalid
-                                            console.log("file " + filePath + " size invalid");
-                                            fs.unlinkSync(filePath);
-                                            return callback();
-                                        } else {
-                                            //file size valid
-                                            var data = new imageModel({
-                                                file_name: info.result.img_title,
-                                                file_id: id,
-                                                status: 0,
-                                                img_url: info.result.img_url,
-                                                web_info: info.result.kind,
-                                                page_url: info.result.page_url
-                                            });
-                                            data.save(function (err, doc) {
-                                                if (err) {
-                                                    console.log(err);
-                                                    return callback(err);
-                                                } else {
-                                                    console.log("processing " + doc.img_url);
-                                                    setTimeout(function(){
-                                                        return callback();
-                                                    }, 2000);
-
-                                                }
-                                            });
-                                        }
-                                    }, function (error) {
-                                        console.log(err);
-                                        return callback(error);
-                                    });
+                                callback(null);
                             })
                         });
-                        request.on("error", function(error){
-                            console.log("connection error " + error);
-                        });
-                    } else {
-                        console.log("already exists");
-                        return callback();
                     }
-                }
-            });
-    }else{
-        return callback();
-    }
-
-
-}
-
-function readLine(){
-    var read = fs.readSync(fd, buffer, 0, bufferSize, null);
-    if(read != 0){
-        left += buffer.toString("utf-8", 0, read);
-        var end;
-        while( (end = left.indexOf("\n")) != -1){
-            var line = left.substring(0, end);
-            left = left.substring(end + 1);
-            processline(line, function(){
-                readLine();
-            });
+                });
+            }else{
+                console.log("already exists");
+                callback();
+            }
         }
-    }else{
-        return ;
-    }
+    });
+    /**
+     * url : image url
+     * updatetime : long
+     * result : {
+     *    kind : image type
+     *    title : image name
+     *    url : page url
+     *    pic : image_url
+     * }
+     */
+
 }
 
-readLine();
 
-//fs.close(fd);
-//mongoose.disconnect();
+
+
+function getLine(fd){
+
+    var read;
+    read = fs.readSync(fd, buffer, 0, bufferSize, null);
+    if(read !== 0) {
+        left += buffer.toString('utf-8', 0, read);
+        var end;
+
+        function getNextline(){
+            end = left.indexOf("\n");
+            if(end !== -1){
+                processline(left.substring(0, end), function(){
+                    left = left.substring(end + 1);
+                    getNextline();
+                });
+            }else{
+                getLine(fd);
+            }
+        }
+        getNextline();
+    }else{
+        processline(left, function(){});
+    }
+}
