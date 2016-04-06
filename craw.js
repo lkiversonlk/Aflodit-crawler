@@ -19,7 +19,7 @@ if(argv.length != 3){
 }
 
 try{
-    var configPath = path.join(process.env.HOME, "crawler", "config.json");
+    var configPath = path.join(process.env.HOME, ".aflodit.json");
     var configuration = require(configPath);
     mongoose.connect(configuration.mongo.mongourl + "/" + configuration.mongo.db);
 }catch (error){
